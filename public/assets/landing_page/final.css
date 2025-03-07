@@ -1,0 +1,217 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #e0e7f3;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #fff;
+}
+
+.logo img {
+    height: 40px;
+}
+
+nav ul {
+    list-style-type: none;
+    display: flex;
+    gap: 15px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #000;
+    font-weight: bold;
+}
+
+.hero {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 50px 0;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    width: 100%;
+    padding: 0 20px;
+}
+
+/* .content {
+    flex: 1;
+    text-align: left;
+} */
+
+.content {
+    display: flex;
+    flex-direction: column; 
+    justify-content: center;
+    align-items: center; 
+    height: 100%;
+}
+
+.content h1 {
+    font-size: 3em;
+    color: #333;
+}
+
+.app-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-buttons a img {
+    height: 50px;
+}
+
+.phone {
+    position: relative;
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.phone img {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* .overlay {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+} */
+
+.transaction-popup h3 {
+    font-size: 1.2em;
+    color: #007bff;
+}
+
+.transaction-popup p {
+    font-size: 1em;
+    color: #333;
+}
+
+.transaction-popup button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.transaction-popup button:hover {
+    background-color: #0056b3;
+}
+
+/* MOBILE VIEW STYLING */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .content h1 {
+        font-size: 2em;
+    }
+
+    .phone img {
+        margin-top: 30px;
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .app-buttons {
+        justify-content: center;
+    }
+
+    .app-buttons a img {
+        height: 40px;
+    }
+
+    /* .overlay {
+        bottom: 10px;
+        right: 10px;
+        padding: 10px;
+    } */
+
+    .transaction-popup h3 {
+        font-size: 1em;
+    }
+
+    .transaction-popup p {
+        font-size: 0.9em;
+    }
+
+    .transaction-popup button {
+        padding: 8px 16px;
+    }
+
+    header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    nav ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    nav ul li a {
+        font-size: 1em;
+    }
+}
+
+/* EXTRA SMALL VIEW (MOBILE) */
+@media (max-width: 480px) {
+    .content h1 {
+        font-size: 1.5em;
+    }
+
+    .app-buttons a img {
+        height: 35px;
+    }
+
+    .phone img {
+        max-width: 200px;
+        margin-top: 30px;
+    }
+
+    /* .overlay {
+        bottom: 5px;
+        right: 5px;
+        padding: 8px;
+    } */
+
+    .transaction-popup h3, .transaction-popup p {
+        font-size: 0.85em;
+    }
+
+    .transaction-popup button {
+        font-size: 0.85em;
+        padding: 6px 12px;
+    }
+}

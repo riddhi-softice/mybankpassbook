@@ -1,0 +1,34 @@
+================================== working 2 minutes- not every minutes
+
+=> if permission not denied
+sudo chown -R sft2018:sft2018 /home/sft2018/public_html/domain/project_name
+sudo chmod -R 775 /home/sft2018/public_html/domain.com/project_name/storage
+sudo chmod -R 775 /home/sft2018/public_html/domain.com/project_name/bootstrap/cache
+
+=> jobs and fails jobs table add
+=> php artisan make:job SendNotification -create job
+
+sudo nano /etc/supervisord.d/videoapps-worker.conf // also create manually
+
+[program:videoapps-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=/opt/cpanel/ea-php81/root/usr/bin/php /home/sft2018/public_html/domain/project_name/artisan queue:work --sleep=3 --tries=3
+autostart=true
+autorestart=true
+user=sft2018
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/home/sft2018/public_html/domain.com/project_name/storage/logs/queue.log
+
+
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start laravel-new-project-worker
+sudo supervisorctl start videoapps-worker
+
+sudo supervisorctl status
+
+=> if above command to not run
+nohup php /home/sft2018/public_html/domain.com/artisan queue:work --sleep=3 --tries=3 > /home/sft2018/public_html/domain.com/storage/logs/queue.log 2>&1 &
+
+======================================
