@@ -8,8 +8,8 @@ Route::get('test', function () {
     return 'API is working';
 });
 
-
 Route::post('user_login', [ApiController::class, 'user_login']);
+Route::post('verify_purchase', [ApiController::class, 'validateInAppPurchase']);
 
 
 Route::group(['middleware' => ['throttle:60,1'], 'as' => 'api.'], function () {
@@ -17,10 +17,10 @@ Route::group(['middleware' => ['throttle:60,1'], 'as' => 'api.'], function () {
 
     Route::post('get_article', [ApiController::class, 'get_article']);
     Route::post('get_common_setting', [ApiController::class, 'get_common_setting']);
+    Route::post('get_bank_holiday', [ApiController::class, 'get_bank_holiday']);
 // });
 });
 
+Route::get('BankHolidayStore', [ApiController::class, 'BankHolidayStore']);
 Route::get('noti_test', [ApiController::class, 'noti_test']);
 
-
-Route::post('verify_purchase', [ApiController::class, 'validateInAppPurchase']);

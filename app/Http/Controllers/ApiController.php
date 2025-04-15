@@ -11,17 +11,14 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Cache;
 
-
-
 define('PACKAGE_NAME', 'com.allbankpassbook.balanchecker');
 define('PRODUCT_ID', 'com.allbankpassbook.balanchecker.weekly');
 define('PURCHASE_KEY', 'com.allbankpassbook.balanchecker.weekly');
 define('NEWS_API_KEY', 'b35767cdaa804a5fa735ed9a96c7f782');
 
 class ApiController extends BaseController
-{
-    
-     public function noti_test()
+{    
+    public function noti_test()
     {
         $notificationSendData = [
             'notification_title' => "hello",
@@ -31,8 +28,7 @@ class ApiController extends BaseController
         $send_notification = ApplicationNotification::sendOneSignalNotification($notificationSendData);
         dd($send_notification);
     }
-    
-    
+        
     public function user_login(Request $request)
     {
         $data = DB::table('common_settings')->where('setting_key','=','app_install_count')->pluck('setting_value')->first();
@@ -50,6 +46,231 @@ class ApiController extends BaseController
         $response = $this->encryptData($user);
         return $this->sendResponse($response, 'Data get Successfully!');
     }
+
+    public function get_common_setting(Request $request)
+    {
+        // Cache the settings to reduce DB hits
+        $cacheKey = 'common_settings';
+        
+        // Cache for 60 minutes (or adjust as needed)
+        $settings = Cache::remember($cacheKey, 60, function() {
+            return DB::table('common_settings')->get();
+        });
+        
+        $formattedSettings = [];
+        foreach ($settings as $setting) {
+            $values = explode(',', $setting->setting_value);
+            foreach ($values as $value) {
+                $formattedSettings[$setting->setting_key][] = $value;
+            }
+        }
+        
+        $response = $this->encryptData($formattedSettings);
+
+        return $this->sendResponse($response, 'Data retrieved successfully!');
+    }
+
+    public function get_article(Request $request)
+    {
+         // Cache::flush(); 
+         
+        $todayDate = date('d M, Y');
+        $perPage = 8;
+        $page = !empty($request->page_no) ? $request->page_no : 1;
+
+        // Cache the articles for 30 minutes
+        $cacheKey = 'articles_page_' . $page;
+        $cachedArticles = Cache::remember($cacheKey, 30, function() {
+            $response = Http::get('https://apps.videoapps.club/common_news/new_list_articles.php');
+            return $response->json();
+        });
+
+        $getData = $cachedArticles['articles'];
+        $getArticles = array_slice($getData, ($page - 1) * $perPage, $perPage);
+
+        $latestArticles = [];
+        $blank_image = asset('storage/app/public/news_images/placholder.jpg');
+
+        foreach ($getArticles as $key => $article) {
+            $publishedAt = $article['published_at'] ?? null;
+            $img_url = $article['image_url'] ?? $blank_image;
+
+            if ($publishedAt && strtotime($publishedAt)) {
+                $content = $article['content'];
+                $first_sentence = preg_split('/[.|\r]/', $content)[0] ?? '';
+
+                $latestArticles[] = [
+                    'title' => $article['title'] ?? 'Data not found',
+                    'description' => $article['description'] ?? 'Data not found',
+                    'content' => $first_sentence,
+                    'author' => $article['author'],
+                    'url' => $img_url,
+                    'publishedAt' => $todayDate,
+                    'detail_url' => $article['url'],
+                    'source_name' => $article['source_name'],
+                ];
+            }
+        }
+
+        // Pagination details
+        $last = count($getData) / $perPage;
+        $paginationDetails = [
+            'total_record' => count($getData),
+            'per_page' => (int) $perPage,
+            'current_page' => (int) $page,
+            'last_page' => ceil($last),
+        ];
+
+        $responseData['pagination'] = $paginationDetails;
+        $responseData['article_data'] = $latestArticles;
+        $response = $this->encryptData($responseData);
+
+        return $this->sendResponse($response, 'Data retrieved successfully.');
+    }
+    
+    public function validateInAppPurchase(Request $request)
+    {
+        $purchase_json = $request->input('purchase_json');
+        $purchaseData = json_decode($purchase_json, true);
+
+        $orderId = $purchaseData['orderId'] ?? null;
+        $packageName = $purchaseData['packageName'] ?? null;
+        $purchaseState = $purchaseData['purchaseState'] ?? null;
+
+        if (strpos($orderId, 'GPA') !== 0) {
+            return response()->json(['success' => false, 'message' => 'Order ID is invalid'], 400);
+        }
+        $package_name = PACKAGE_NAME;
+        if($package_name != $packageName){
+            return response()->json(['success' => false, 'message' => "Invalid package name"], 400);
+        }
+        if($purchaseState == 1){
+            return response()->json(['success' => false, 'message' => "Payment Cancel"], 400);
+        }
+        if($purchaseState == 2){
+            return response()->json(['success' => false, 'message' => "Payment Pending"], 400);
+        }
+
+        if($purchaseState == 0 && strpos($orderId, 'GPA') === 0 && $package_name == $packageName){
+            return response()->json(['success' => true, 'message' => "Payment Successful"], 200);
+        }
+
+        return response()->json(['success' => false, 'message' => "Something went wrong"]);
+    }
+
+    public function get_bank_holiday(Request $request)
+    {
+        $todayDate = date('Y-m-d');
+        // $todayDate = "2025-01-11"; // For testing
+
+        $data = DB::table('bank_holiday')->where('date', $todayDate)->first();
+
+        if (is_null($data)) {
+            $response = [
+                'holiday_status'   => false,
+                'holiday_reason'   => '',
+                'bank_time'        => '9:30AM - 3:30PM',
+                'date'             => date('d M Y', strtotime($todayDate)),
+                'day'              => date('l', strtotime($todayDate)),
+            ];
+        } else {
+            $response = [
+                'holiday_status'   => true,
+                'holiday_reason'   => $data->holiday_reason ?? '',
+                'bank_time'        => '',
+                'date'             => date('d M Y', strtotime($data->date)),
+                'day'              => $data->day ?? date('l', strtotime($data->date)),
+            ];
+        }
+
+        $encResponse = $this->encryptData($response);
+        return $this->sendResponse($encResponse, 'Data fetched successfully!');
+    }
+
+    public function BankHolidayStore() 
+    { 
+        // Scrap data using chatgpt
+        // https://www.bankbazaar.com/indian-holiday/bank-holidays.html  // this apis data
+        // https://timesofindia.indiatimes.com/business/bank-holidays/uttar-pradesh  
+
+        $data = [
+            ["date" => "2025-01-11", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-01-25", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-01-26", "day" => "Sunday", "holiday_reason" => "Republic Day" ],
+            ["date" => "2025-02-08", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-02-22", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-02-26", "day" => "Wednesday", "holiday_reason" => "Maha Shivaratri" ],
+            ["date" => "2025-03-08", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-03-14", "day" => "Friday", "holiday_reason" => "Holi" ],
+            ["date" => "2025-03-22", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-03-30", "day" => "Sunday", "holiday_reason" => "Ugadi" ],
+            ["date" => "2025-04-12", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-04-13", "day" => "Sunday", "holiday_reason" => "Vaisakhi" ],
+            ["date" => "2025-04-14", "day" => "Monday", "holiday_reason" => "Ambedkar Jayanti" ],
+            ["date" => "2025-04-18", "day" => "Friday", "holiday_reason" => "Good Friday" ],
+            ["date" => "2025-04-26", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-05-01", "day" => "Thursday", "holiday_reason" => "May Day" ],
+            ["date" => "2025-05-10", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-05-24", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-06-06", "day" => "Friday", "holiday_reason" => "Bakrid/Eid al-Adha" ],
+            ["date" => "2025-06-14", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-06-28", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-07-12", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-07-26", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-08-09", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-08-15", "day" => "Friday", "holiday_reason" => "Independence Day" ],
+            ["date" => "2025-08-15", "day" => "Friday", "holiday_reason" => "Janmashtami" ],
+            ["date" => "2025-08-23", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-09-13", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-09-27", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-10-02", "day" => "Thursday", "holiday_reason" => "Gandhi Jayanti" ],
+            ["date" => "2025-10-11", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-10-20", "day" => "Monday",   "holiday_reason" => "Diwali" ],
+            ["date" => "2025-10-25", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-11-08", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-11-22", "day" => "Saturday", "holiday_reason" => "4th Saturday" ],
+            ["date" => "2025-12-13", "day" => "Saturday", "holiday_reason" => "2nd Saturday" ],
+            ["date" => "2025-12-25", "day" => "Thursday", "holiday_reason" => "Christmas Day" ],
+            ["date" => "2025-12-27", "day" => "Saturday", "holiday_reason" => "4th Saturday"]
+        ];
+
+        DB::table('bank_holiday')->insert($data);
+        return "Data Store successfully.";
+    }
+
+    #######################################################
+    
+    public function test_notification_article(Request $request)
+    {
+        $response = Http::get('https://apps.videoapps.club/common_news/list_articles.php');
+        $articles = $response->json();
+
+        date_default_timezone_set('Asia/Kolkata');
+        $currentTime = date('H:i');
+        if ($currentTime >= '00:00' && $currentTime < '10:00') {
+            $article = $articles['articles'][0];   # 10 AM
+        } elseif ($currentTime >= '10:00' && $currentTime < '13:00') {
+            $article = $articles['articles'][1];   # 1 PM
+        } elseif ($currentTime >= '13:00' && $currentTime < '18:00') {
+            $article = $articles['articles'][2];   # 6 PM
+        } elseif ($currentTime >= '18:00' && $currentTime < '21:00') {
+                $article = $articles['articles'][3];   # 9 PM
+        }else{
+                $article = $articles['articles'][4];
+        }
+
+        if (!is_null($article)) {
+
+            $imageUrl = ($article['image_url'] == null) ? asset('img/No-Image-Placeholder.svg') : asset($article['image_url']);
+            $notificationSendData['notification_title'] =$article['title'];
+            $notificationSendData['notification_description'] = $article['title'];
+            $notificationSendData['notification_image'] = $imageUrl;
+
+            $send_notification = ApplicationNotification::sendOneSignalNotificationSchedule($notificationSendData);
+            // \Log::info("Cron: article notification sent");
+            dd($send_notification);
+        }
+    } 
 
     public function user_login_old(Request $request)
     {
@@ -161,159 +382,6 @@ class ApiController extends BaseController
         return $this->sendResponse($response, 'Data get Successfully!');
     }
 
-
-    public function get_common_setting(Request $request)
-    {
-        // Cache the settings to reduce DB hits
-        $cacheKey = 'common_settings';
-        
-        // Cache for 60 minutes (or adjust as needed)
-        $settings = Cache::remember($cacheKey, 60, function() {
-            return DB::table('common_settings')->get();
-        });
-        
-        $formattedSettings = [];
-        foreach ($settings as $setting) {
-            $values = explode(',', $setting->setting_value);
-            foreach ($values as $value) {
-                $formattedSettings[$setting->setting_key][] = $value;
-            }
-        }
-        
-        $response = $this->encryptData($formattedSettings);
-
-        return $this->sendResponse($response, 'Data retrieved successfully!');
-    }
-
-    public function get_article(Request $request)
-    {
-         // Cache::flush(); 
-         
-        $todayDate = date('d M, Y');
-        $perPage = 8;
-        $page = !empty($request->page_no) ? $request->page_no : 1;
-
-        // Cache the articles for 30 minutes
-        $cacheKey = 'articles_page_' . $page;
-        $cachedArticles = Cache::remember($cacheKey, 30, function() {
-            $response = Http::get('https://apps.videoapps.club/common_news/new_list_articles.php');
-            return $response->json();
-        });
-
-        $getData = $cachedArticles['articles'];
-        $getArticles = array_slice($getData, ($page - 1) * $perPage, $perPage);
-
-        $latestArticles = [];
-        $blank_image = asset('storage/app/public/news_images/placholder.jpg');
-
-        foreach ($getArticles as $key => $article) {
-            $publishedAt = $article['published_at'] ?? null;
-            $img_url = $article['image_url'] ?? $blank_image;
-
-            if ($publishedAt && strtotime($publishedAt)) {
-                $content = $article['content'];
-                $first_sentence = preg_split('/[.|\r]/', $content)[0] ?? '';
-
-                $latestArticles[] = [
-                    'title' => $article['title'] ?? 'Data not found',
-                    'description' => $article['description'] ?? 'Data not found',
-                    'content' => $first_sentence,
-                    'author' => $article['author'],
-                    'url' => $img_url,
-                    'publishedAt' => $todayDate,
-                    'detail_url' => $article['url'],
-                    'source_name' => $article['source_name'],
-                ];
-            }
-        }
-
-        // Pagination details
-        $last = count($getData) / $perPage;
-        $paginationDetails = [
-            'total_record' => count($getData),
-            'per_page' => (int) $perPage,
-            'current_page' => (int) $page,
-            'last_page' => ceil($last),
-        ];
-
-        $responseData['pagination'] = $paginationDetails;
-        $responseData['article_data'] = $latestArticles;
-        $response = $this->encryptData($responseData);
-
-        return $this->sendResponse($response, 'Data retrieved successfully.');
-    }
-    
-
-    
-    public function test_notification_article(Request $request)
-    {
-            $response = Http::get('https://apps.videoapps.club/common_news/list_articles.php');
-            $articles = $response->json();
-
-            date_default_timezone_set('Asia/Kolkata');
-            $currentTime = date('H:i');
-            if ($currentTime >= '00:00' && $currentTime < '10:00') {
-                $article = $articles['articles'][0];   # 10 AM
-            } elseif ($currentTime >= '10:00' && $currentTime < '13:00') {
-                $article = $articles['articles'][1];   # 1 PM
-            } elseif ($currentTime >= '13:00' && $currentTime < '18:00') {
-                $article = $articles['articles'][2];   # 6 PM
-            } elseif ($currentTime >= '18:00' && $currentTime < '21:00') {
-                 $article = $articles['articles'][3];   # 9 PM
-            }else{
-                 $article = $articles['articles'][4];
-            }
-
-            if (!is_null($article)) {
-
-                $imageUrl = ($article['image_url'] == null) ? asset('img/No-Image-Placeholder.svg') : asset($article['image_url']);
-                $notificationSendData['notification_title'] =$article['title'];
-                $notificationSendData['notification_description'] = $article['title'];
-                $notificationSendData['notification_image'] = $imageUrl;
-
-                $send_notification = ApplicationNotification::sendOneSignalNotificationSchedule($notificationSendData);
-                // \Log::info("Cron: article notification sent");
-                dd($send_notification);
-            }
-    } 
-
-
-    
-
-   public function validateInAppPurchase(Request $request)
-    {
-        $purchase_json = $request->input('purchase_json');
-        $purchaseData = json_decode($purchase_json, true);
-
-        $orderId = $purchaseData['orderId'] ?? null;
-        $packageName = $purchaseData['packageName'] ?? null;
-        $purchaseState = $purchaseData['purchaseState'] ?? null;
-
-        if (strpos($orderId, 'GPA') !== 0) {
-            return response()->json(['success' => false, 'message' => 'Order ID is invalid'], 400);
-        }
-        $package_name = PACKAGE_NAME;
-        if($package_name != $packageName){
-            return response()->json(['success' => false, 'message' => "Invalid package name"], 400);
-        }
-        if($purchaseState == 1){
-            return response()->json(['success' => false, 'message' => "Payment Cancel"], 400);
-        }
-        if($purchaseState == 2){
-            return response()->json(['success' => false, 'message' => "Payment Pending"], 400);
-        }
-
-        if($purchaseState == 0 && strpos($orderId, 'GPA') === 0 && $package_name == $packageName){
-            return response()->json(['success' => true, 'message' => "Payment Successful"], 200);
-        }
-
-        return response()->json(['success' => false, 'message' => "Something went wrong"]);
-    }
-
-   
-
-
-
     // public function validateInAppPurchase(Request $request)
     // {
     //     $purchaseToken = $request->purchase_token;
@@ -345,10 +413,6 @@ class ApiController extends BaseController
     //         return false;
     //     }
     // }
-
-
-
-
 
 }
 
