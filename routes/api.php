@@ -22,5 +22,6 @@ Route::group(['middleware' => ['throttle:60,1'], 'as' => 'api.'], function () {
 });
 
 Route::get('BankHolidayStore', [ApiController::class, 'BankHolidayStore']);
+Route::get('BankHolidayStoreState', [ApiController::class, 'BankHolidayStoreState']);
 Route::get('noti_test', [ApiController::class, 'noti_test']);
 
