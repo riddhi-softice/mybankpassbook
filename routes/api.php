@@ -18,6 +18,7 @@ Route::group(['middleware' => ['throttle:60,1'], 'as' => 'api.'], function () {
     Route::post('get_article', [ApiController::class, 'get_article']);
     Route::post('get_common_setting', [ApiController::class, 'get_common_setting']);
     Route::post('get_bank_holiday', [ApiController::class, 'get_bank_holiday']);
+    Route::post('get_state', [ApiController::class, 'get_state']);
 // });
 });
 
