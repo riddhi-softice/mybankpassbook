@@ -30,7 +30,15 @@ class SendNotification implements ShouldQueue
     {
         // Log::info("Starting {$this->type} Notification Job.");
 
-        $notifications = $this->type === 'account' ? $this->getAccountNotifications() : $this->getInvoiceNotifications();
+        // $notifications = $this->type === 'account' ? $this->getAccountNotifications() : $this->getInvoiceNotifications();
+
+        if ($this->type === 'holiday') {
+            $notifications = $this->getHolidayNotification();
+        } elseif ($this->type === 'account') {
+            $notifications = $this->getAccountNotifications();
+        } elseif ($this->type === 'invoice') {
+            $notifications = $this->getInvoiceNotifications();
+        }
         $this->sendNotification($notifications);
 
         // Log::info("{$this->type} Notification Job Completed.");
@@ -170,7 +178,7 @@ class SendNotification implements ShouldQueue
     
     private function getInvoiceNotifications()
     {
-         $invoiceNotifications = [
+        $invoiceNotifications = [
             [
                 'title' => 'Invoice Created Successfully',
                 'description' => 'Your invoice for XXX is ready. Tap to view or share the invoice.'
@@ -199,6 +207,17 @@ class SendNotification implements ShouldQueue
 
         // Pick a random notification from the invoiceNotifications array
         return $invoiceNotifications[array_rand($invoiceNotifications)];
+    }
+
+    private function getHolidayNotification()
+    {
+        $notificationSendData = [
+            'title' => "Bank Alert! Today is a Bank Holiday!",
+            'description' => "Banks are closed today as per the calendar.",
+        ];
+        \Log::info("Notification sent Completed.");
+
+        return $notificationSendData;
     }
 
 }

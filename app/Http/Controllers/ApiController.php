@@ -3696,6 +3696,18 @@ class ApiController extends BaseController
 
     }
 
+    public function holiday_notification()
+    {
+        $notificationSendData = [
+            'notification_title' => "Bank Alert! Today is a Bank Holiday!",
+            'notification_description' => "Banks are closed today as per the calendar.",
+            'notification_image' => asset('public/assets/img/logo.png'),
+        ];
+        \Log::info("Notification sent Completed.");
+
+        $send_notification = ApplicationNotification::sendOneSignalNotification($notificationSendData);
+    }
+
     #######################################################
     
     public function test_notification_article(Request $request)

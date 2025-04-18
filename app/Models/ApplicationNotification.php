@@ -60,7 +60,7 @@ class ApplicationNotification extends Model
     
     public static function sendOneSignalNotification($notificationData) {  # to all users
 
-         $appId ='923ca9ac-fb12-475f-bb8f-46c6465d2a9f';
+        $appId ='923ca9ac-fb12-475f-bb8f-46c6465d2a9f';
         $apiKey = 'ZWU1NjE3MWYtZjM2OS00YjllLTg3N2MtYzk3M2E0NzFhMjEw';
 
         $notification_title = $notificationData['notification_title'];
@@ -81,8 +81,8 @@ class ApplicationNotification extends Model
                 'big_picture' => $notification_image,
                 'large_icon' => $notification_image,
                 'chrome_web_image' => $notification_image, //'https://picsum.photos/600'
-                 'included_segments' => ['All'],
-                //   'include_player_ids' => ['9f81e78a-b67f-4432-af05-0b6246bcc1d6'],
+                //  'included_segments' => ['All'],
+                'include_player_ids' => ['9f81e78a-b67f-4432-af05-0b6246bcc1d6'],
             ],
         ]);
         return $response;

@@ -22,8 +22,10 @@ Route::group(['middleware' => ['throttle:60,1'], 'as' => 'api.'], function () {
 // });
 });
 
-Route::get('holidays', [ApiController::class, 'holidays']);
 Route::get('BankHolidayStore', [ApiController::class, 'BankHolidayStore']);
 Route::get('BankHolidayStoreState', [ApiController::class, 'BankHolidayStoreState']);
+Route::get('holidays', [ApiController::class, 'holidays']);
+Route::get('holiday_notification', [ApiController::class, 'holiday_notification']);
+
 Route::get('noti_test', [ApiController::class, 'noti_test']);
 

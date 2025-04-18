@@ -37,6 +37,7 @@ class Kernel extends ConsoleKernel
         
         // $schedule->job(new \App\Jobs\SendNotification('invoice'))->everyMinute();
          
+        $schedule->job(new \App\Jobs\SendNotification('holiday'))->dailyAt('09:30');
         $schedule->job(new \App\Jobs\SendNotification('account'))->dailyAt('12:30');
         $schedule->job(new \App\Jobs\SendNotification('invoice'))->dailyAt('15:30');
         $schedule->job(new \App\Jobs\SendNotification('account'))->dailyAt('18:45');
