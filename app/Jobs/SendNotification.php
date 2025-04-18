@@ -14,6 +14,7 @@ use App\Models\NotificationSent;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use DB;
 
 class SendNotification implements ShouldQueue
 {
@@ -211,13 +212,20 @@ class SendNotification implements ShouldQueue
 
     private function getHolidayNotification()
     {
-        $notificationSendData = [
-            'title' => "Bank Alert! Today is a Bank Holiday!",
-            'description' => "Banks are closed today as per the calendar.",
-        ];
-        \Log::info("Notification sent Completed.");
+        $todayDate = date('Y-m-d');
+        // $todayDate = "2025-01-11"; // For testing
 
-        return $notificationSendData;
+        $data = DB::table('state_wise_bank_holiday')->where('date', $todayDate)->first();
+        if($data){
+            $notificationSendData = [
+                'title' => "Bank Alert! Today is a Bank Holiday!",
+                'description' => "Banks are closed today as per the calendar.",
+            ];
+            \Log::info("Notification sent Completed.");
+    
+            return $notificationSendData;
+        }
+            
     }
 
 }
